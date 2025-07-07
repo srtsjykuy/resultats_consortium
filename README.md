@@ -74,8 +74,8 @@ Le site est configuré comme une Progressive Web App :
 ## 🔒 Identifiants par défaut
 
 **⚠️ À CHANGER EN PRODUCTION ⚠️**
-- Username: `admin_consortium`
-- Password: `CEE2024!SecureAdmin#`
+- Username: `consortium2025`
+- Password: `1Consortium$`
 
 ## 📝 License
 

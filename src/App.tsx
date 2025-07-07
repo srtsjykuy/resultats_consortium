@@ -75,10 +75,10 @@ function App() {
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<string>('');
 
-  // Credentials sécurisés (en production, utiliser des variables d'environnement)
+  // Credentials sécurisés mis à jour
   const ADMIN_CREDENTIALS = {
-    username: 'admin_consortium',
-    password: 'CEE2024!SecureAdmin#'
+    username: 'consortium2025',
+    password: '1Consortium$'
   };
 
   const MAX_LOGIN_ATTEMPTS = 3;
