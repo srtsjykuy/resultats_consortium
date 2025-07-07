@@ -838,7 +838,7 @@ function App() {
             {/* Footer */}
             <div className="mt-16 text-center">
               <p className="text-blue-200 text-lg">
-                🌟 Consortium des Esprits Exceptionnels - 2024 🌟
+                🌟 Consortium des Esprits Exceptionnels 🌟
               </p>
               <p className="text-blue-300 mt-2">
                 "L'excellence n'est pas une destination, c'est un voyage"
