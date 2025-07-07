@@ -1,13 +1,19 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "consortium-esprits-exceptionnels",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "Site officiel du Consortium des Esprits Exceptionnels",
+  "keywords": ["consortium", "résultats", "excellence"],
+  "author": "Consortium des Esprits Exceptionnels",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "lint:fix": "eslint . --fix",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "build:analyze": "vite build --mode analyze"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",

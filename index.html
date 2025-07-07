@@ -6,9 +6,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>⚡ Consortium des Esprits Exceptionnels ⚡</title>
     <meta name="description" content="Résultats officiels du Consortium des Esprits Exceptionnels - Excellence, Innovation, Leadership" />
+    
+    <!-- SEO Meta Tags -->
+    <meta name="keywords" content="consortium, esprits exceptionnels, résultats, excellence, innovation, leadership" />
+    <meta name="author" content="Consortium des Esprits Exceptionnels" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Consortium des Esprits Exceptionnels" />
+    <meta property="og:description" content="Résultats officiels du Consortium des Esprits Exceptionnels" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://votre-domaine.com" />
+    <meta property="og:image" content="https://votre-domaine.com/og-image.jpg" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Consortium des Esprits Exceptionnels" />
+    <meta name="twitter:description" content="Résultats officiels du Consortium des Esprits Exceptionnels" />
+    <meta name="twitter:image" content="https://votre-domaine.com/twitter-image.jpg" />
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#fbbf24" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Consortium CEE" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/src/main.tsx" as="script" />
+    <link rel="preload" href="/src/index.css" as="style" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self';" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Fallback for users with JavaScript disabled -->
+    <noscript>
+      <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+        <h1>JavaScript requis</h1>
+        <p>Ce site nécessite JavaScript pour fonctionner correctement.</p>
+        <p>Veuillez activer JavaScript dans votre navigateur.</p>
+      </div>
+    </noscript>
   </body>
 </html>
