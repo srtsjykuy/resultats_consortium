@@ -1,24 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Trophy, Crown, Sparkles, Award, Users, Search, Plus, Edit, Trash2, User, Mail, Phone, Target, Shield, Lock, Eye, EyeOff, AlertTriangle, Clock, Calendar, Play, Pause, Download, Upload, FileSpreadsheet } from 'lucide-react';
-
-interface Person {
-  id: string;
-  nom: string;
-  prenom: string;
-  email: string;
-  numero: string;
-  points: number;
-}
+import { Star, Trophy, Crown, Sparkles, Award, Users, Search, Plus, Edit, Trash2, User, Mail, Phone, Target, Shield, Lock, Eye, EyeOff, AlertTriangle, Clock, Calendar, Play, Pause, Download, Upload, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { useSupabase } from './hooks/useSupabase';
+import { useCountdown } from './hooks/useCountdown';
 
 interface LoginAttempt {
   timestamp: number;
   ip: string;
-}
-
-interface CountdownSettings {
-  targetDate: string;
-  isActive: boolean;
-  title: string;
 }
 
 function App() {
@@ -34,35 +21,34 @@ function App() {
   const [sessionTimeout, setSessionTimeout] = useState<NodeJS.Timeout | null>(null);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const [csrfToken] = useState(() => Math.random().toString(36).substring(2, 15));
-  
-  // Countdown state
-  const [countdownSettings, setCountdownSettings] = useState<CountdownSettings>({
-    targetDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16), // 24h from now
-    isActive: true,
-    title: 'LES RÉSULTATS SERONT DISPONIBLES DANS'
-  });
-  const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [isCountdownFinished, setIsCountdownFinished] = useState(false);
-  
-  const [persons, setPersons] = useState<Person[]>([
-    {
-      id: '1',
-      nom: 'Dupont',
-      prenom: 'Marie',
-      email: 'marie.dupont@email.com',
-      numero: '001',
-      points: 95
-    },
-    {
-      id: '2',
-      nom: 'Martin',
-      prenom: 'Pierre',
-      email: 'pierre.martin@email.com',
-      numero: '002',
-      points: 88
-    }
-  ]);
-  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+
+  // Hooks personnalisés
+  const { 
+    members, 
+    loading: membersLoading, 
+    error: membersError,
+    addMember, 
+    updateMember, 
+    deleteMember,
+    refreshMembers 
+  } = useSupabase();
+
+  const {
+    countdownSettings,
+    timeRemaining,
+    isCountdownFinished,
+    loading: countdownLoading,
+    error: countdownError,
+    getCountdownTextColor,
+    toggleCountdown,
+    updateTargetDate,
+    updateTitle,
+    updateDescription,
+    refreshSettings
+  } = useCountdown();
+
+  // États pour la gestion des membres
+  const [editingMember, setEditingMember] = useState<any>(null);
   const [formData, setFormData] = useState({
     nom: '',
     prenom: '',
@@ -71,62 +57,40 @@ function App() {
     points: 0
   });
 
-  // Excel import state
+  // États pour l'import Excel
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<string>('');
 
-  // Credentials sécurisés mis à jour
+  // États pour la gestion du chrono en admin
+  const [tempCountdownSettings, setTempCountdownSettings] = useState({
+    target_date: '',
+    title: '',
+    description: ''
+  });
+
+  // Credentials sécurisés
   const ADMIN_CREDENTIALS = {
-    username: 'consortium2025',
-    password: '1Consortium$'
+    username: 'consortium',
+    password: 'ExcellenceSupreme!'
   };
 
   const MAX_LOGIN_ATTEMPTS = 3;
   const BLOCK_DURATION = 15 * 60 * 1000; // 15 minutes
   const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
-  // Countdown calculation
+  // Initialiser les paramètres temporaires du chrono
   useEffect(() => {
-    if (!countdownSettings.isActive) {
-      setIsCountdownFinished(true);
-      return;
+    if (countdownSettings && !countdownLoading) {
+      setTempCountdownSettings({
+        target_date: countdownSettings.target_date ? new Date(countdownSettings.target_date).toISOString().slice(0, 16) : '',
+        title: countdownSettings.title || '',
+        description: countdownSettings.description || ''
+      });
     }
-
-    const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const target = new Date(countdownSettings.targetDate).getTime();
-      const difference = target - now;
-
-      if (difference > 0) {
-        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-        setTimeRemaining({ days, hours, minutes, seconds });
-        setIsCountdownFinished(false);
-      } else {
-        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        setIsCountdownFinished(true);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [countdownSettings]);
-
-  // Fonction pour déterminer la couleur du chrono
-  const getCountdownTextColor = () => {
-    const totalDays = timeRemaining.days;
-    if (totalDays >= 4) {
-      return 'text-yellow-400'; // Jaune pour 4+ jours
-    } else {
-      return 'text-red-500'; // Rouge pour moins de 4 jours
-    }
-  };
+  }, [countdownSettings, countdownLoading]);
 
   // Fonction de validation sécurisée
   const validateInput = (input: string, type: 'text' | 'email' | 'number') => {
-    // Protection contre XSS
     const sanitized = input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
     
     switch (type) {
@@ -145,7 +109,7 @@ function App() {
   // Gestion des tentatives de connexion
   const handleLoginAttempt = (success: boolean) => {
     const now = Date.now();
-    const userIP = 'user_ip'; // En production, récupérer la vraie IP
+    const userIP = 'user_ip';
     
     if (!success) {
       const newAttempts = [...loginAttempts, { timestamp: now, ip: userIP }];
@@ -159,7 +123,6 @@ function App() {
         setIsBlocked(true);
         setBlockTimeRemaining(BLOCK_DURATION);
         
-        // Décompte du temps de blocage
         const blockTimer = setInterval(() => {
           setBlockTimeRemaining(prev => {
             if (prev <= 1000) {
@@ -186,7 +149,6 @@ function App() {
       return;
     }
 
-    // Simulation d'un délai pour éviter les attaques par force brute
     setTimeout(() => {
       if (loginData.username === ADMIN_CREDENTIALS.username && 
           loginData.password === ADMIN_CREDENTIALS.password) {
@@ -195,8 +157,6 @@ function App() {
         setLoginData({ username: '', password: '' });
         setLastActivity(Date.now());
         handleLoginAttempt(true);
-        
-        // Démarrer le timeout de session
         startSessionTimeout();
       } else {
         handleLoginAttempt(false);
@@ -253,14 +213,14 @@ function App() {
     };
   }, [isAuthenticated]);
 
-  const filteredPersons = persons.filter(person =>
-    person.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    person.numero.includes(searchTerm)
+  const filteredMembers = members.filter(member =>
+    member.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    member.numero.includes(searchTerm)
   );
 
-  const handleAddPerson = () => {
+  const handleAddMember = async () => {
     if (!isAuthenticated) return;
     
     const validatedData = {
@@ -272,33 +232,31 @@ function App() {
     };
 
     if (validatedData.nom && validatedData.prenom && validatedData.email && validatedData.numero) {
-      const newPerson: Person = {
-        id: Date.now().toString(),
-        ...validatedData
-      };
-      setPersons([...persons, newPerson]);
-      setFormData({ nom: '', prenom: '', email: '', numero: '', points: 0 });
-      updateActivity();
+      const success = await addMember(validatedData);
+      if (success) {
+        setFormData({ nom: '', prenom: '', email: '', numero: '', points: 0 });
+        updateActivity();
+      }
     } else {
       alert('Données invalides détectées. Veuillez vérifier vos entrées.');
     }
   };
 
-  const handleEditPerson = (person: Person) => {
+  const handleEditMember = (member: any) => {
     if (!isAuthenticated) return;
-    setEditingPerson(person);
+    setEditingMember(member);
     setFormData({
-      nom: person.nom,
-      prenom: person.prenom,
-      email: person.email,
-      numero: person.numero,
-      points: person.points
+      nom: member.nom,
+      prenom: member.prenom,
+      email: member.email,
+      numero: member.numero,
+      points: member.points
     });
     updateActivity();
   };
 
-  const handleUpdatePerson = () => {
-    if (!isAuthenticated || !editingPerson) return;
+  const handleUpdateMember = async () => {
+    if (!isAuthenticated || !editingMember) return;
     
     const validatedData = {
       nom: validateInput(formData.nom, 'text'),
@@ -309,23 +267,21 @@ function App() {
     };
 
     if (validatedData.nom && validatedData.prenom && validatedData.email && validatedData.numero) {
-      setPersons(persons.map(p => 
-        p.id === editingPerson.id 
-          ? { ...editingPerson, ...validatedData }
-          : p
-      ));
-      setEditingPerson(null);
-      setFormData({ nom: '', prenom: '', email: '', numero: '', points: 0 });
-      updateActivity();
+      const success = await updateMember(editingMember.id, validatedData);
+      if (success) {
+        setEditingMember(null);
+        setFormData({ nom: '', prenom: '', email: '', numero: '', points: 0 });
+        updateActivity();
+      }
     } else {
       alert('Données invalides détectées. Veuillez vérifier vos entrées.');
     }
   };
 
-  const handleDeletePerson = (id: string) => {
+  const handleDeleteMember = async (id: string) => {
     if (!isAuthenticated) return;
     if (confirm('Êtes-vous sûr de vouloir supprimer ce membre ?')) {
-      setPersons(persons.filter(p => p.id !== id));
+      await deleteMember(id);
       updateActivity();
     }
   };
@@ -338,19 +294,40 @@ function App() {
     }
   };
 
-  // Countdown management functions
-  const handleUpdateCountdown = () => {
+  // Gestion du chrono depuis l'admin
+  const handleUpdateCountdownSettings = async () => {
     if (!isAuthenticated) return;
-    updateActivity();
+    
+    try {
+      // Mettre à jour la date cible
+      if (tempCountdownSettings.target_date) {
+        await updateTargetDate(new Date(tempCountdownSettings.target_date).toISOString());
+      }
+      
+      // Mettre à jour le titre
+      if (tempCountdownSettings.title) {
+        await updateTitle(tempCountdownSettings.title);
+      }
+      
+      // Mettre à jour la description
+      if (tempCountdownSettings.description) {
+        await updateDescription(tempCountdownSettings.description);
+      }
+      
+      updateActivity();
+      alert('Paramètres du chrono mis à jour avec succès !');
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
+      alert('Erreur lors de la mise à jour des paramètres');
+    }
   };
 
-  const handleToggleCountdown = () => {
+  const handleToggleCountdown = async () => {
     if (!isAuthenticated) return;
-    setCountdownSettings(prev => ({
-      ...prev,
-      isActive: !prev.isActive
-    }));
-    updateActivity();
+    const success = await toggleCountdown();
+    if (success) {
+      updateActivity();
+    }
   };
 
   // Excel Export Function
@@ -374,13 +351,12 @@ function App() {
   };
 
   // Excel Import Function
-  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!isAuthenticated) return;
     
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Vérification du type de fichier
     const allowedTypes = ['.csv', '.xlsx', '.xls'];
     const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
     
@@ -393,24 +369,21 @@ function App() {
     setImportStatus('Lecture du fichier...');
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
         const lines = text.split('\n');
-        
-        // Ignorer la première ligne (en-têtes)
         const dataLines = lines.slice(1).filter(line => line.trim() !== '');
         
-        const newPersons: Person[] = [];
+        let successCount = 0;
         let errorCount = 0;
         
-        dataLines.forEach((line, index) => {
+        for (const line of dataLines) {
           const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
           
           if (columns.length >= 5) {
             const [nom, prenom, email, numero, pointsStr] = columns;
             
-            // Validation des données
             const validatedNom = validateInput(nom, 'text');
             const validatedPrenom = validateInput(prenom, 'text');
             const validatedEmail = validateInput(email, 'email');
@@ -418,18 +391,22 @@ function App() {
             const points = parseInt(pointsStr) || 0;
             
             if (validatedNom && validatedPrenom && validatedEmail && validatedNumero) {
-              // Vérifier si le numéro existe déjà
-              const existingPerson = persons.find(p => p.numero === validatedNumero);
+              const existingMember = members.find(m => m.numero === validatedNumero);
               
-              if (!existingPerson) {
-                newPersons.push({
-                  id: `import_${Date.now()}_${index}`,
+              if (!existingMember) {
+                const success = await addMember({
                   nom: validatedNom,
                   prenom: validatedPrenom,
                   email: validatedEmail,
                   numero: validatedNumero,
-                  points: Math.max(0, Math.min(100, points)) // Points entre 0 et 100
+                  points: Math.max(0, Math.min(100, points))
                 });
+                
+                if (success) {
+                  successCount++;
+                } else {
+                  errorCount++;
+                }
               } else {
                 errorCount++;
               }
@@ -439,12 +416,10 @@ function App() {
           } else {
             errorCount++;
           }
-        });
+        }
 
-        if (newPersons.length > 0) {
-          setPersons(prevPersons => [...prevPersons, ...newPersons]);
-          setImportStatus(`✅ ${newPersons.length} membres importés avec succès!`);
-          
+        if (successCount > 0) {
+          setImportStatus(`✅ ${successCount} membres importés avec succès!`);
           if (errorCount > 0) {
             setImportStatus(prev => prev + ` (${errorCount} lignes ignorées)`);
           }
@@ -454,7 +429,6 @@ function App() {
 
         updateActivity();
         
-        // Effacer le message après 5 secondes
         setTimeout(() => {
           setImportStatus('');
         }, 5000);
@@ -464,7 +438,6 @@ function App() {
         console.error('Import error:', error);
       } finally {
         setIsImporting(false);
-        // Reset input
         event.target.value = '';
       }
     };
@@ -478,8 +451,8 @@ function App() {
     
     const csvContent = "data:text/csv;charset=utf-8," 
       + "Nom,Prenom,Email,Numero,Points\n"
-      + persons.map(person => 
-          `${person.nom},${person.prenom},${person.email},${person.numero},${person.points}`
+      + members.map(member => 
+          `${member.nom},${member.prenom},${member.email},${member.numero},${member.points}`
         ).join('\n');
     
     const encodedUri = encodeURI(csvContent);
@@ -492,6 +465,33 @@ function App() {
     
     updateActivity();
   };
+
+  // Affichage des erreurs
+  if (membersError || countdownError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 flex items-center justify-center p-4">
+        <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 max-w-md w-full border border-white/20 shadow-2xl text-center">
+          <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Erreur de Connexion
+          </h2>
+          <p className="text-blue-200 mb-6">
+            {membersError || countdownError}
+          </p>
+          <button
+            onClick={() => {
+              refreshMembers();
+              refreshSettings();
+            }}
+            className="flex items-center space-x-2 bg-gradient-to-r from-yellow-400 to-amber-400 text-white px-6 py-3 rounded-lg hover:from-yellow-500 hover:to-amber-500 transition-all duration-300 mx-auto"
+          >
+            <RefreshCw className="w-5 h-5" />
+            <span>Réessayer</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 relative overflow-hidden">
@@ -699,7 +699,12 @@ function App() {
             </div>
 
             {/* Countdown or Results */}
-            {!isCountdownFinished ? (
+            {countdownLoading ? (
+              <div className="text-center space-y-4">
+                <RefreshCw className="w-12 h-12 text-yellow-400 mx-auto animate-spin" />
+                <p className="text-blue-200">Chargement du chrono...</p>
+              </div>
+            ) : !isCountdownFinished ? (
               /* Countdown Display */
               <div className="text-center space-y-8 mb-16 animate-slide-up">
                 <Clock className="w-20 h-20 text-yellow-400 mx-auto animate-pulse" />
@@ -728,8 +733,7 @@ function App() {
                 </div>
 
                 <p className="text-xl text-blue-100 leading-relaxed max-w-2xl mx-auto">
-                  Les résultats exceptionnels de nos membres d'élite seront bientôt révélés.
-                  Préparez-vous à découvrir l'excellence !
+                  {countdownSettings.description}
                 </p>
               </div>
             ) : (
@@ -778,9 +782,14 @@ function App() {
                   {/* Search Results */}
                   {searchTerm && (
                     <div className="space-y-4">
-                      {filteredPersons.length > 0 ? (
-                        filteredPersons.map((person) => (
-                          <div key={person.id} className="bg-gradient-to-r from-white/20 to-white/10 rounded-2xl p-6 border border-white/30">
+                      {membersLoading ? (
+                        <div className="text-center py-8">
+                          <RefreshCw className="w-8 h-8 text-yellow-400 mx-auto animate-spin mb-2" />
+                          <p className="text-blue-200 text-lg">Recherche en cours...</p>
+                        </div>
+                      ) : filteredMembers.length > 0 ? (
+                        filteredMembers.map((member) => (
+                          <div key={member.id} className="bg-gradient-to-r from-white/20 to-white/10 rounded-2xl p-6 border border-white/30">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-4">
                                 <div className="w-12 h-12 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full flex items-center justify-center">
@@ -788,17 +797,17 @@ function App() {
                                 </div>
                                 <div>
                                   <h5 className="text-xl font-bold text-white">
-                                    {person.prenom} {person.nom}
+                                    {member.prenom} {member.nom}
                                   </h5>
-                                  <p className="text-blue-200">N° {person.numero}</p>
+                                  <p className="text-blue-200">N° {member.numero}</p>
                                 </div>
                               </div>
                               <div className="text-right">
                                 <div className="flex items-center space-x-2 mb-2">
                                   <Target className="w-5 h-5 text-yellow-400" />
-                                  <span className="text-2xl font-bold text-yellow-400">{person.points} pts</span>
+                                  <span className="text-2xl font-bold text-yellow-400">{member.points} pts</span>
                                 </div>
-                                <p className="text-blue-200 text-sm">{person.email}</p>
+                                <p className="text-blue-200 text-sm">{member.email}</p>
                               </div>
                             </div>
                           </div>
@@ -857,6 +866,108 @@ function App() {
                   </h2>
                   <div className="text-sm text-green-300">
                     Session active - Timeout: {Math.ceil((SESSION_TIMEOUT - (Date.now() - lastActivity)) / 60000)} min
+                  </div>
+                </div>
+
+                {/* Countdown Management */}
+                <div className="bg-white/10 rounded-2xl p-6 mb-8 border border-white/20">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                    <Clock className="w-6 h-6 text-yellow-400 mr-2" />
+                    Gestion du Chrono de Révélation (Base de Données)
+                  </h3>
+                  
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-blue-200 mb-2">
+                          Date et heure de révélation
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={tempCountdownSettings.target_date}
+                          onChange={(e) => setTempCountdownSettings(prev => ({
+                            ...prev,
+                            target_date: e.target.value
+                          }))}
+                          className="w-full px-4 py-3 bg-white/20 rounded-lg border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-blue-200 mb-2">
+                          Titre du chrono
+                        </label>
+                        <input
+                          type="text"
+                          value={tempCountdownSettings.title}
+                          onChange={(e) => setTempCountdownSettings(prev => ({
+                            ...prev,
+                            title: e.target.value
+                          }))}
+                          className="w-full px-4 py-3 bg-white/20 rounded-lg border border-white/30 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                          placeholder="Titre du chrono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-blue-200 mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          value={tempCountdownSettings.description}
+                          onChange={(e) => setTempCountdownSettings(prev => ({
+                            ...prev,
+                            description: e.target.value
+                          }))}
+                          className="w-full px-4 py-3 bg-white/20 rounded-lg border border-white/30 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                          placeholder="Description du chrono"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg p-4 border border-blue-400/30">
+                        <h4 className="text-white font-medium mb-2">État actuel (Base de données)</h4>
+                        <p className="text-blue-200 text-sm mb-3">
+                          {isCountdownFinished ? 'Résultats visibles' : 'Chrono en cours'}
+                        </p>
+                        <div className="text-yellow-400 font-mono text-lg">
+                          {timeRemaining.days}j {timeRemaining.hours}h {timeRemaining.minutes}m {timeRemaining.seconds}s
+                        </div>
+                        <div className="mt-2">
+                          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                            timeRemaining.days >= 4 
+                              ? 'bg-yellow-500/20 text-yellow-300' 
+                              : 'bg-red-500/20 text-red-300'
+                          }`}>
+                            {timeRemaining.days >= 4 ? 'Mode Normal' : 'Mode Urgence'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={handleUpdateCountdownSettings}
+                          className="flex items-center space-x-2 px-4 py-2 bg-green-500/20 text-green-300 hover:bg-green-500/30 rounded-lg transition-all duration-300"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          <span>Sauvegarder</span>
+                        </button>
+                        
+                        <button
+                          onClick={handleToggleCountdown}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 ${
+                            countdownSettings.is_active 
+                              ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' 
+                              : 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
+                          }`}
+                        >
+                          {countdownSettings.is_active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                          <span>{countdownSettings.is_active ? 'Arrêter' : 'Démarrer'}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -944,88 +1055,10 @@ function App() {
                   </div>
                 </div>
 
-                {/* Countdown Management */}
-                <div className="bg-white/10 rounded-2xl p-6 mb-8 border border-white/20">
-                  <h3 className="text-xl font-bold text-white mb-4 flex items-center">
-                    <Clock className="w-6 h-6 text-yellow-400 mr-2" />
-                    Gestion du Chrono de Révélation
-                  </h3>
-                  
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-blue-200 mb-2">
-                          Date et heure de révélation
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={countdownSettings.targetDate}
-                          onChange={(e) => setCountdownSettings(prev => ({
-                            ...prev,
-                            targetDate: e.target.value
-                          }))}
-                          className="w-full px-4 py-3 bg-white/20 rounded-lg border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-blue-200 mb-2">
-                          Titre du chrono
-                        </label>
-                        <input
-                          type="text"
-                          value={countdownSettings.title}
-                          onChange={(e) => setCountdownSettings(prev => ({
-                            ...prev,
-                            title: e.target.value
-                          }))}
-                          className="w-full px-4 py-3 bg-white/20 rounded-lg border border-white/30 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                          placeholder="Titre du chrono"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg p-4 border border-blue-400/30">
-                        <h4 className="text-white font-medium mb-2">État actuel</h4>
-                        <p className="text-blue-200 text-sm mb-3">
-                          {isCountdownFinished ? 'Résultats visibles' : 'Chrono en cours'}
-                        </p>
-                        <div className="text-yellow-400 font-mono text-lg">
-                          {timeRemaining.days}j {timeRemaining.hours}h {timeRemaining.minutes}m {timeRemaining.seconds}s
-                        </div>
-                        <div className="mt-2">
-                          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                            timeRemaining.days >= 4 
-                              ? 'bg-yellow-500/20 text-yellow-300' 
-                              : 'bg-red-500/20 text-red-300'
-                          }`}>
-                            {timeRemaining.days >= 4 ? 'Mode Normal' : 'Mode Urgence'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={handleToggleCountdown}
-                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 ${
-                            countdownSettings.isActive 
-                              ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' 
-                              : 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
-                          }`}
-                        >
-                          {countdownSettings.isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                          <span>{countdownSettings.isActive ? 'Arrêter' : 'Démarrer'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Add/Edit Form */}
                 <div className="bg-white/10 rounded-2xl p-6 mb-8 border border-white/20">
                   <h3 className="text-xl font-bold text-white mb-4">
-                    {editingPerson ? 'Modifier un membre' : 'Ajouter un nouveau membre'}
+                    {editingMember ? 'Modifier un membre' : 'Ajouter un nouveau membre'}
                   </h3>
                   <div className="grid md:grid-cols-2 gap-4 mb-4">
                     <input
@@ -1075,16 +1108,16 @@ function App() {
                   </div>
                   <div className="flex space-x-4">
                     <button
-                      onClick={editingPerson ? handleUpdatePerson : handleAddPerson}
+                      onClick={editingMember ? handleUpdateMember : handleAddMember}
                       className="flex items-center space-x-2 bg-gradient-to-r from-yellow-400 to-amber-400 text-white px-6 py-3 rounded-lg hover:from-yellow-500 hover:to-amber-500 transition-all duration-300"
                     >
                       <Plus className="w-5 h-5" />
-                      <span>{editingPerson ? 'Mettre à jour' : 'Ajouter'}</span>
+                      <span>{editingMember ? 'Mettre à jour' : 'Ajouter'}</span>
                     </button>
-                    {editingPerson && (
+                    {editingMember && (
                       <button
                         onClick={() => {
-                          setEditingPerson(null);
+                          setEditingMember(null);
                           setFormData({ nom: '', prenom: '', email: '', numero: '', points: 0 });
                         }}
                         className="px-6 py-3 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-all duration-300"
@@ -1097,9 +1130,14 @@ function App() {
 
                 {/* Members List */}
                 <div className="space-y-4">
-                  <h3 className="text-xl font-bold text-white mb-4">Liste des membres ({persons.length})</h3>
-                  {persons.map((person) => (
-                    <div key={person.id} className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                  <h3 className="text-xl font-bold text-white mb-4">
+                    Liste des membres ({members.length})
+                    {membersLoading && (
+                      <RefreshCw className="w-5 h-5 text-yellow-400 inline ml-2 animate-spin" />
+                    )}
+                  </h3>
+                  {members.map((member) => (
+                    <div key={member.id} className="bg-white/10 rounded-2xl p-4 border border-white/20">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="w-10 h-10 bg-gradient-to-r from-yellow-400 to-amber-400 rounded-full flex items-center justify-center">
@@ -1107,33 +1145,33 @@ function App() {
                           </div>
                           <div>
                             <h4 className="text-lg font-bold text-white">
-                              {person.prenom} {person.nom}
+                              {member.prenom} {member.nom}
                             </h4>
                             <div className="flex items-center space-x-4 text-sm text-blue-200">
                               <span className="flex items-center space-x-1">
                                 <Mail className="w-4 h-4" />
-                                <span>{person.email}</span>
+                                <span>{member.email}</span>
                               </span>
                               <span className="flex items-center space-x-1">
                                 <Phone className="w-4 h-4" />
-                                <span>N° {person.numero}</span>
+                                <span>N° {member.numero}</span>
                               </span>
                               <span className="flex items-center space-x-1">
                                 <Target className="w-4 h-4" />
-                                <span>{person.points} pts</span>
+                                <span>{member.points} pts</span>
                               </span>
                             </div>
                           </div>
                         </div>
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleEditPerson(person)}
+                            onClick={() => handleEditMember(member)}
                             className="p-2 bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30 transition-all duration-300"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDeletePerson(person.id)}
+                            onClick={() => handleDeleteMember(member.id)}
                             className="p-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-all duration-300"
                           >
                             <Trash2 className="w-4 h-4" />
