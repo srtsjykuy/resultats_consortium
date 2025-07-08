@@ -213,7 +213,7 @@ function App() {
     };
   }, [isAuthenticated]);
 
-  const filteredMembers = members.filter(member =>
+  const filteredMembers = (members || []).filter(member =>
     member.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
