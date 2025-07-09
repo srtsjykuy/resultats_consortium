@@ -3,15 +3,21 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-console.log('Supabase configuration:', {
-  url: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'missing',
-  key: supabaseAnonKey ? `${supabaseAnonKey.substring(0, 20)}...` : 'missing'
-})
+// Vérification de la configuration Supabase
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Configuration Supabase manquante. Certaines fonctionnalités peuvent ne pas fonctionner.')
+}
 
 export const supabase = supabaseUrl && supabaseAnonKey 
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        persistSession: false
+        persistSession: false,
+        autoRefreshToken: false
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'consortium-app'
+        }
       }
     })
   : null

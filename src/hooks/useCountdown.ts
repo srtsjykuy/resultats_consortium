@@ -1,16 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import type { Database } from '../lib/supabase'
 
-interface CountdownSettings {
-  id: string
-  target_date: string
-  is_active: boolean
-  title: string
-  description: string | null
-  created_at: string | null
-  updated_at: string | null
-  created_by: string | null
-}
+type CountdownSettings = Database['public']['Tables']['countdown_settings']['Row']
 
 export function useCountdown() {
   const [settings, setSettings] = useState<CountdownSettings | null>(null)
@@ -30,27 +22,52 @@ export function useCountdown() {
       const { data, error: supabaseError } = await supabase
         .from('countdown_settings')
         .select('*')
-        .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
 
       if (supabaseError) {
-        // If no data found, that's not necessarily an error
-        if (supabaseError.code === 'PGRST116') {
-          console.log('No active countdown settings found')
-          setSettings(null)
-        } else {
-          throw supabaseError
-        }
+        throw supabaseError
+      }
+      
+      if (data && data.length > 0) {
+        setSettings(data[0])
       } else {
-        setSettings(data)
+        // Créer des paramètres par défaut si aucun n'existe
+        await createDefaultSettings()
       }
     } catch (err) {
       console.error('Error fetching countdown settings:', err)
       setError(err instanceof Error ? err.message : 'Erreur de connexion à la base de données')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const createDefaultSettings = async () => {
+    try {
+      if (!supabase) return
+      
+      const defaultSettings = {
+        target_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        is_active: true,
+        title: 'LES RÉSULTATS SERONT DISPONIBLES DANS',
+        description: 'Les résultats exceptionnels de nos membres d\'élite seront bientôt révélés.',
+        created_by: 'system'
+      }
+      
+      const { data, error: supabaseError } = await supabase
+        .from('countdown_settings')
+        .insert(defaultSettings)
+        .select()
+        .single()
+
+      if (supabaseError) {
+        throw supabaseError
+      }
+
+      setSettings(data)
+    } catch (err) {
+      console.error('Error creating default settings:', err)
     }
   }
 
@@ -123,6 +140,7 @@ export function useCountdown() {
     error,
     refetch: fetchCountdownSettings,
     updateSettings: updateCountdownSettings,
-    createSettings: createCountdownSettings
+    createSettings: createCountdownSettings,
+    createDefaultSettings
   }
 }
