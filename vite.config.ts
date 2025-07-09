@@ -7,9 +7,6 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  define: {
-    'process.env.NODE_ENV': JSON.stringify('production')
-  },
   build: {
     // Optimisations pour la production
     minify: 'terser',
