@@ -3,6 +3,20 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+// Vérifier si les variables d'environnement sont configurées correctement
+const isValidUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && parsed.hostname.includes('supabase.co')
+  } catch {
+    return false
+  }
+}
+
+const isValidKey = (key: string): boolean => {
+  return key && key.length > 20 && !key.includes('votre_')
+}
+
 // Configuration robuste avec gestion d'erreurs
 const supabaseConfig = {
   auth: {
@@ -25,17 +39,58 @@ const supabaseConfig = {
   }
 }
 
-// Créer le client Supabase avec vérification
-export const supabase = (supabaseUrl && supabaseAnonKey) 
-  ? createClient(supabaseUrl, supabaseAnonKey, supabaseConfig)
-  : null
+// Créer le client Supabase avec vérification stricte
+export const supabase = (
+  supabaseUrl && 
+  supabaseAnonKey && 
+  isValidUrl(supabaseUrl) && 
+  isValidKey(supabaseAnonKey)
+) ? createClient(supabaseUrl, supabaseAnonKey, supabaseConfig) : null
 
-// Fonction de test de connexion
+// Fonction de diagnostic de configuration
+export const getSupabaseConfigStatus = (): { 
+  configured: boolean; 
+  issues: string[]; 
+  url?: string; 
+  keyLength?: number 
+} => {
+  const issues: string[] = []
+  
+  if (!supabaseUrl) {
+    issues.push('VITE_SUPABASE_URL manquant dans le fichier .env')
+  } else if (!isValidUrl(supabaseUrl)) {
+    issues.push('VITE_SUPABASE_URL invalide (doit être une URL Supabase valide)')
+  }
+  
+  if (!supabaseAnonKey) {
+    issues.push('VITE_SUPABASE_ANON_KEY manquant dans le fichier .env')
+  } else if (!isValidKey(supabaseAnonKey)) {
+    issues.push('VITE_SUPABASE_ANON_KEY invalide (vérifiez que ce n\'est pas une valeur placeholder)')
+  }
+  
+  return {
+    configured: issues.length === 0,
+    issues,
+    url: supabaseUrl,
+    keyLength: supabaseAnonKey?.length
+  }
+}
+
+// Fonction de test de connexion améliorée
 export const testSupabaseConnection = async (): Promise<{ success: boolean; error?: string }> => {
+  const configStatus = getSupabaseConfigStatus()
+  
+  if (!configStatus.configured) {
+    return { 
+      success: false, 
+      error: `Configuration Supabase incorrecte:\n${configStatus.issues.join('\n')}` 
+    }
+  }
+
   if (!supabase) {
     return { 
       success: false, 
-      error: 'Configuration Supabase manquante. Veuillez configurer VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.' 
+      error: 'Client Supabase non initialisé. Vérifiez votre configuration.' 
     }
   }
 
