@@ -1,6 +1,5 @@
 User-agent: *
-Disallow: /admin
-Disallow: /api
+Disallow: /assets/
+Disallow: /*.js$
+Disallow: /*.css$
 Allow: /
-
-Sitemap: https://votre-domaine.com/sitemap.xml

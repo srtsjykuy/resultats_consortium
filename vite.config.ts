@@ -7,6 +7,9 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production')
+  },
   build: {
     // Optimisations pour la production
     minify: 'terser',
@@ -14,6 +17,7 @@ export default defineConfig({
       compress: {
         drop_console: true,
         drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug'],
       },
     },
     rollupOptions: {
@@ -21,11 +25,29 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom'],
           icons: ['lucide-react'],
+          supabase: ['@supabase/supabase-js'],
         },
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return `assets/images/[name]-[hash][extname]`;
+          }
+          if (/css/i.test(ext)) {
+            return `assets/css/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
+        },
+        chunkFileNames: 'assets/js/[name]-[hash].js',
+        entryFileNames: 'assets/js/[name]-[hash].js',
       },
     },
     // Taille limite des chunks
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500,
+    // Optimisations supplémentaires
+    cssCodeSplit: true,
+    sourcemap: false,
+    reportCompressedSize: false,
   },
   server: {
     // Configuration pour le développement
@@ -34,5 +56,6 @@ export default defineConfig({
   },
   preview: {
     port: 4173,
+    host: true,
   },
 });
