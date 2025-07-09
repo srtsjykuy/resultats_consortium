@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Star, Sparkles, Trophy, Crown, Zap } from 'lucide-react';
+import { Clock, Star, Sparkles, Trophy, Crown, Zap, AlertCircle, CheckCircle } from 'lucide-react';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { useCountdown } from './hooks/useCountdown';
 
@@ -98,34 +98,60 @@ const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
 };
 
 // Connection status component
-const ConnectionStatus = ({ error, onRetry }: { error: string | null; onRetry: () => void }) => {
-  if (!error) return null;
-
-  return (
-    <div className="bg-red-500/20 backdrop-blur-md rounded-2xl p-6 border border-red-400/30 shadow-lg max-w-md mx-auto mb-8">
-      <div className="flex items-center space-x-3 mb-4">
-        <Zap className="w-6 h-6 text-red-400" />
-        <h3 className="text-lg font-semibold text-white">Erreur de Connexion</h3>
+const ConnectionStatus = ({ 
+  error, 
+  isConnected, 
+  onRetry 
+}: { 
+  error: string | null; 
+  isConnected: boolean;
+  onRetry: () => void;
+}) => {
+  if (isConnected && !error) {
+    return (
+      <div className="bg-green-500/20 backdrop-blur-md rounded-2xl p-4 border border-green-400/30 shadow-lg max-w-md mx-auto mb-6">
+        <div className="flex items-center space-x-3">
+          <CheckCircle className="w-5 h-5 text-green-400" />
+          <span className="text-green-200 text-sm">Connecté à Supabase</span>
+        </div>
       </div>
-      <p className="text-red-200 mb-4">{error}</p>
-      <button
-        onClick={onRetry}
-        className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300"
-      >
-        Réessayer
-      </button>
-    </div>
-  );
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-500/20 backdrop-blur-md rounded-2xl p-6 border border-red-400/30 shadow-lg max-w-md mx-auto mb-8">
+        <div className="flex items-center space-x-3 mb-4">
+          <AlertCircle className="w-6 h-6 text-red-400" />
+          <h3 className="text-lg font-semibold text-white">Erreur de Connexion</h3>
+        </div>
+        <p className="text-red-200 mb-4 text-sm">{error}</p>
+        <div className="space-y-2">
+          <button
+            onClick={onRetry}
+            className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-300"
+          >
+            Réessayer
+          </button>
+          <p className="text-red-300 text-xs">
+            Assurez-vous que Supabase est configuré avec le bouton "Connect to Supabase" en haut à droite.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 };
 
 function App() {
-  const { settings, loading, error, refetch } = useCountdown();
+  const { settings, loading, error, refetch, isConnected } = useCountdown();
 
   // Default settings if no database connection
   const defaultSettings = {
     title: "LES RÉSULTATS SERONT DISPONIBLES DANS",
     description: "Les résultats exceptionnels de nos membres d'élite seront bientôt révélés.",
-    target_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+    target_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     is_active: true
   };
 
@@ -155,8 +181,12 @@ function App() {
           </div>
         </div>
 
-        {/* Connection Error */}
-        <ConnectionStatus error={error} onRetry={refetch} />
+        {/* Connection Status */}
+        <ConnectionStatus 
+          error={error} 
+          isConnected={isConnected}
+          onRetry={refetch} 
+        />
 
         {/* Main Content */}
         <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 md:p-12 max-w-2xl w-full border border-white/20 shadow-2xl animate-fade-in-delay">
@@ -195,6 +225,15 @@ function App() {
                 </div>
                 <Trophy className="w-8 h-8 text-yellow-400" />
               </div>
+
+              {/* Status indicator */}
+              {!isConnected && (
+                <div className="mt-6 text-center">
+                  <p className="text-yellow-300 text-sm">
+                    Mode hors ligne - Fonctionnalités limitées
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>
