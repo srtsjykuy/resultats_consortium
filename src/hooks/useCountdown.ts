@@ -22,6 +22,11 @@ export function useCountdown() {
       setLoading(true)
       setError(null)
       
+      // Check if Supabase is configured
+      if (!supabase) {
+        throw new Error('Supabase n\'est pas configuré. Veuillez vérifier vos variables d\'environnement.')
+      }
+      
       const { data, error: supabaseError } = await supabase
         .from('countdown_settings')
         .select('*')
@@ -43,7 +48,7 @@ export function useCountdown() {
       }
     } catch (err) {
       console.error('Error fetching countdown settings:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch countdown settings')
+      setError(err instanceof Error ? err.message : 'Erreur de connexion à la base de données')
     } finally {
       setLoading(false)
     }
@@ -52,6 +57,10 @@ export function useCountdown() {
   const updateCountdownSettings = async (updates: Partial<CountdownSettings>) => {
     try {
       setError(null)
+      
+      if (!supabase) {
+        throw new Error('Supabase n\'est pas configuré')
+      }
       
       if (!settings?.id) {
         throw new Error('No settings to update')
@@ -80,6 +89,10 @@ export function useCountdown() {
   const createCountdownSettings = async (newSettings: Omit<CountdownSettings, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       setError(null)
+      
+      if (!supabase) {
+        throw new Error('Supabase n\'est pas configuré')
+      }
       
       const { data, error: supabaseError } = await supabase
         .from('countdown_settings')
